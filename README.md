@@ -10,8 +10,7 @@ meson compile -C build
 
 # Usage
 
-This library is a fairly thin wrapper over linenoise itself, so the function calls
-are named similarly.  I may develop a "porcelain" layer in the future.
+This library is a fairly thin wrapper over linenoise itself.
 
 ## L.input(prompt)
 
