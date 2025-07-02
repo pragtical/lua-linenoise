@@ -1,23 +1,23 @@
 local L = require 'linenoise'
-L.clearscreen()
+L.clear_screen()
 print '----- Testing lua-linenoise! ------'
 local prompt, history = '? ', 'history.txt'
-L.historyload(history) -- load existing history
-L.setcompletion(function(c,s)
+L.load_history(history) -- load existing history
+L.set_completion(function(c,s)
    if s == 'h' then
     c:add('help') -- same as L.addcompletion(c,'help)
-    L.addcompletion(c,'halt') -- same as c:add('halt')
+    L.add_completion(c,'halt') -- same as c:add('halt')
   end
 end)
 
-local line, err = L.linenoise(prompt)
+local line, err = L.input(prompt)
 while line do
     if #line > 0 then
         print(line:upper())
-        L.historyadd(line)
-        L.historysave(history) -- save every new line
+        L.add_history(line)
+        L.save_history(history) -- save every new line
     end
-    line, err = L.linenoise(prompt)
+    line, err = L.input(prompt)
 end
 
 if err then

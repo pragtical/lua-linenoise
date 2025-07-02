@@ -75,7 +75,7 @@ static void completion_callback_wrapper(const char *line, linenoiseCompletions *
     }
 }
 
-static int l_linenoise(lua_State *L)
+static int l_input(lua_State *L)
 {
     const char *prompt = luaL_checkstring(L, 1);
     char *line;
@@ -106,7 +106,7 @@ static int l_linenoise(lua_State *L)
 
 static int lines_next(lua_State *L)
 {
-    lua_pushcfunction(L, l_linenoise);
+    lua_pushcfunction(L, l_input);
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_call(L, 1, 1);
     return 1;
@@ -119,7 +119,7 @@ static int l_lines(lua_State *L)
     return 1;
 }
 
-static int l_historyadd(lua_State *L)
+static int l_history_add(lua_State *L)
 {
     const char *line = luaL_checkstring(L, 1);
 
@@ -130,7 +130,7 @@ static int l_historyadd(lua_State *L)
     return handle_ln_ok(L);
 }
 
-static int l_historysetmaxlen(lua_State *L)
+static int l_history_set_max_len(lua_State *L)
 {
     int len = luaL_checkinteger(L, 1);
 
@@ -141,7 +141,7 @@ static int l_historysetmaxlen(lua_State *L)
     return handle_ln_ok(L);
 }
 
-static int l_historysave(lua_State *L)
+static int l_history_save(lua_State *L)
 {
     const char *filename = luaL_checkstring(L, 1);
 
@@ -151,7 +151,7 @@ static int l_historysave(lua_State *L)
     return handle_ln_ok(L);
 }
 
-static int l_historyload(lua_State *L)
+static int l_history_load(lua_State *L)
 {
     const char *filename = luaL_checkstring(L, 1);
 
@@ -161,13 +161,13 @@ static int l_historyload(lua_State *L)
     return handle_ln_ok(L);
 }
 
-static int l_clearscreen(lua_State *L)
+static int l_clear_screen(lua_State *L)
 {
     linenoiseClearScreen();
     return handle_ln_ok(L);
 }
 
-static int l_setcompletion(lua_State *L)
+static int l_set_completion(lua_State *L)
 {
     if(lua_isnoneornil(L, 1)) {
         luaL_unref(L, LUA_REGISTRYINDEX, completion_func_ref);
@@ -188,7 +188,7 @@ static int l_setcompletion(lua_State *L)
     return handle_ln_ok(L);
 }
 
-static int l_addcompletion(lua_State *L)
+static int l_add_completion(lua_State *L)
 {
     linenoiseCompletions *completions = *((linenoiseCompletions **) luaL_checkudata(L, 1, LN_COMPLETION_TYPE));
     const char *entry                 = luaL_checkstring(L, 2);
@@ -199,7 +199,7 @@ static int l_addcompletion(lua_State *L)
 }
 
 static int
-l_setmultiline(lua_State *L)
+l_set_multiline(lua_State *L)
 {
     int is_multi_line = lua_toboolean(L, 1);
 
@@ -209,38 +209,29 @@ l_setmultiline(lua_State *L)
 }
 
 static int
-l_printkeycodes(lua_State *L)
+l_print_keycodes(lua_State *L)
 {
     linenoisePrintKeyCodes();
     return handle_ln_ok(L);
 }
 
 luaL_Reg linenoise_funcs[] = {
-    { "linenoise", l_linenoise },
-    { "historyadd", l_historyadd },
-    { "historysetmaxlen", l_historysetmaxlen },
-    { "historysave", l_historysave },
-    { "historyload", l_historyload },
-    { "clearscreen", l_clearscreen },
-    { "setcompletion", l_setcompletion},
-    { "addcompletion", l_addcompletion },
-    { "setmultiline", l_setmultiline },
-    { "printkeycodes", l_printkeycodes },
-
-    /* Aliases for more consistent function names */
-    { "addhistory", l_historyadd },
-    { "sethistorymaxlen", l_historysetmaxlen },
-    { "savehistory", l_historysave },
-    { "loadhistory", l_historyload },
-
-    { "line", l_linenoise },
+    { "input", l_input },
+    { "add_history", l_history_add },
+    { "set_history_max_len", l_history_set_max_len },
+    { "save_history", l_history_save },
+    { "load_history", l_history_load },
+    { "clear_screen", l_clear_screen },
+    { "set_completion", l_set_completion},
+    { "add_completion", l_add_completion },
+    { "set_multiline", l_set_multiline },
+    { "print_keycodes", l_print_keycodes },
     { "lines", l_lines },
-
     { NULL, NULL }
 };
 
 luaL_Reg linenoise_methods[] = {
-    { "add", l_addcompletion },
+    { "add", l_add_completion },
     { NULL, NULL }
 };
 
