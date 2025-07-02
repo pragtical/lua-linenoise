@@ -26,8 +26,7 @@
 #include <lauxlib.h>
 #include <stdlib.h>
 #include <string.h>
-#include "linenoise.h"
-#include "encodings/utf8.h"
+#include "linenoise/linenoise.h"
 
 #define LN_COMPLETION_TYPE "linenoiseCompletions*"
 
@@ -42,7 +41,6 @@
 #endif
 
 static int completion_func_ref = LUA_NOREF;
-static int hints_func_ref = LUA_NOREF;
 static lua_State *completion_state;
 static int callback_error_ref;
 
@@ -58,7 +56,7 @@ static int handle_ln_ok(lua_State *L)
     return 1;
 }
 
-static int completion_callback_wrapper(const char *line, linenoiseCompletions *completions)
+static void completion_callback_wrapper(const char *line, linenoiseCompletions *completions)
 {
     lua_State *L = completion_state;
     int status;
@@ -72,96 +70,9 @@ static int completion_callback_wrapper(const char *line, linenoiseCompletions *c
 
     status = lua_pcall(L, 2, 0, 0);
 
-    if(status == LUA_OK) {
-        return 0;
-    } else {
-        lua_rawseti(L, LUA_REGISTRYINDEX, callback_error_ref);
-        return 1;
-    }
-}
-
-static char *
-hints_callback_wrapper(const char *line, int *color, int *bold, int *err)
-{
-    lua_State *L = completion_state;
-    char *result = NULL;
-    int status;
-
-    lua_rawgeti(L, LUA_REGISTRYINDEX, hints_func_ref);
-
-    lua_pushstring(L, line);
-
-    status = lua_pcall(L, 1, 2, 0);
     if(status != LUA_OK) {
         lua_rawseti(L, LUA_REGISTRYINDEX, callback_error_ref);
-        *err = 1;
-        return NULL;
     }
-
-    if(!lua_isnoneornil(L, -2)) {
-        if(lua_isstring(L, -2)) {
-            const char *hint;
-            lua_Alloc alloc_f;
-            void *ud;
-
-            hint = lua_tostring(L, -2);
-            alloc_f = lua_getallocf(L, &ud);
-            result = alloc_f(&ud, NULL, LUA_TSTRING, strlen(hint) + 1);
-            if(result) {
-                strcpy(result, hint);
-            }
-        } else {
-            lua_pushfstring(L, "Invalid first value of type '%s' from hints callback - string or nil required", lua_typename(L, lua_type(L, -2)));
-            lua_rawseti(L, LUA_REGISTRYINDEX, callback_error_ref);
-            *err = 1;
-            lua_pop(L, 2);
-            return NULL;
-        }
-
-        if(!lua_isnoneornil(L, -1)) {
-            if(lua_istable(L, -1)) {
-                lua_getfield(L, -1, "color");
-                if(lua_isnumber(L, -1)) {
-                    *color = lua_tointeger(L, -1);
-                } else if(!lua_isnoneornil(L, -1)) {
-                    lua_pushfstring(L, "Invalid color value of type '%s' from hints callback - number or nil required", lua_typename(L, lua_type(L, -1)));
-                    lua_rawseti(L, LUA_REGISTRYINDEX, callback_error_ref);
-                    *err = 1;
-                    lua_pop(L, 3);
-                    // return the result to allow linenoise to free it
-                    return result;
-                }
-                lua_pop(L, 1);
-
-                lua_getfield(L, -1, "bold");
-                *bold = lua_toboolean(L, -1);
-                lua_pop(L, 1);
-            } else {
-                lua_pushfstring(L, "Invalid second value of type '%s' from hints callback - table or nil required", lua_typename(L, lua_type(L, -1)));
-                lua_rawseti(L, LUA_REGISTRYINDEX, callback_error_ref);
-                *err = 1;
-                lua_pop(L, 2);
-                // return the result to allow linenoise to free it
-                return result;
-            }
-        }
-    }
-
-    lua_pop(L, 2);
-
-    return result;
-}
-
-static void
-free_hints_callback(void *p)
-{
-    lua_State *L = completion_state;
-    lua_Alloc alloc_f;
-    void *ud;
-
-    alloc_f = lua_getallocf(L, &ud);
-
-    alloc_f(ud, p, 0, 0);
 }
 
 static int l_linenoise(lua_State *L)
@@ -180,7 +91,7 @@ static int l_linenoise(lua_State *L)
         lua_pushnil(L);
         lua_insert(L, -2);
         if(line) {
-            linenoiseFree(line);
+            free(line);
         }
         return 2;
     }
@@ -189,7 +100,7 @@ static int l_linenoise(lua_State *L)
         return handle_ln_error(L);
     }
     lua_pushstring(L, line);
-    linenoiseFree(line);
+    free(line);
     return 1;
 }
 
@@ -298,45 +209,10 @@ l_setmultiline(lua_State *L)
 }
 
 static int
-l_sethints(lua_State *L)
-{
-    if(lua_isnoneornil(L, 1)) {
-        luaL_unref(L, LUA_REGISTRYINDEX, hints_func_ref);
-        hints_func_ref = LUA_NOREF;
-
-        linenoiseSetHintsCallback(NULL);
-        linenoiseSetFreeHintsCallback(NULL);
-    } else {
-        luaL_checktype(L, 1, LUA_TFUNCTION);
-
-        lua_pushvalue(L, 1);
-        if(hints_func_ref == LUA_NOREF) {
-            hints_func_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-        } else {
-            lua_rawseti(L, LUA_REGISTRYINDEX, hints_func_ref);
-        }
-        linenoiseSetHintsCallback(hints_callback_wrapper);
-        linenoiseSetFreeHintsCallback(free_hints_callback);
-    }
-    return handle_ln_ok(L);
-}
-
-static int
 l_printkeycodes(lua_State *L)
 {
     linenoisePrintKeyCodes();
     return handle_ln_ok(L);
-}
-
-static int
-l_enableutf8(lua_State *L)
-{
-    linenoiseSetEncodingFunctions(
-            linenoiseUtf8PrevCharLen,
-            linenoiseUtf8NextCharLen,
-            linenoiseUtf8ReadCode);
-
-    return 0;
 }
 
 luaL_Reg linenoise_funcs[] = {
@@ -349,9 +225,7 @@ luaL_Reg linenoise_funcs[] = {
     { "setcompletion", l_setcompletion},
     { "addcompletion", l_addcompletion },
     { "setmultiline", l_setmultiline },
-    { "sethints", l_sethints },
     { "printkeycodes", l_printkeycodes },
-    { "enableutf8", l_enableutf8 },
 
     /* Aliases for more consistent function names */
     { "addhistory", l_historyadd },

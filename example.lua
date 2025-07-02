@@ -1,5 +1,5 @@
 local L = require 'linenoise'
--- L.clearscreen()
+L.clearscreen()
 print '----- Testing lua-linenoise! ------'
 local prompt, history = '? ', 'history.txt'
 L.historyload(history) -- load existing history
@@ -9,13 +9,6 @@ L.setcompletion(function(c,s)
     L.addcompletion(c,'halt') -- same as c:add('halt')
   end
 end)
-L.sethints(function(s)
-  if s == 'h' then
-    return ' test hint'
-  end
-end)
-
-L.enableutf8()
 
 local line, err = L.linenoise(prompt)
 while line do

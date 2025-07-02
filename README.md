@@ -1,32 +1,12 @@
 # lua-linenoise - Lua binding for the linenoise command line library
 
-Linenoise (https://github.com/antirez/linenoise) is a delightfully simple command
-line library.  This Lua module is simply a binding for it.
-
-The main Linenoise upstream has stagnated a bit, so this binding tracks https://github.com/yhirose/linenoise/tree/utf8-support, which
-includes things like UTF-8 support and ANSI terminal escape sequence detection.
-
-This repository also contains a Windows-compatible version of linenoise taken from MSOpenTech's [Windows port](https://github.com/MSOpenTech/redis) of redis.
+Fork of https://github.com/hoelzro/lua-linenoise for Pragtical adjusted to use
+https://github.com/arangodb/linenoise-ng which has proper Windows support.
 
 # Compilation
 
-If you use LuaRocks, you can run `luarocks make` on the latest rockspec.
-
-You can also build with make. When building this module using make, you may use the original linenoise source included in
-the repository, or you may set the Makefile variable `LIBLINENOISE` to override
-it:
-
-```sh
-make LIBLINENOISE=-llinenoise
-# OR:
-make LIBLINENOISE=/path/to/liblinenoise.a
-```
-
-You may need to change the value of the LN_EXPORT macro in lua-linenoise.c to the appropriate keyword to ensure the luaopen_linenoise function is exported properly (I don't know much about C or Unix-like systems, so I may have gotten it wrong).
-
-If you have Visual Studio 2012 (even the free Express version), you can compile this module with the Windows-compatible linenoise source using the included solution file (you'll need to edit the include paths and import library dependencies to match your configuration).
-
-If you prefer to compile using other tools, just link lua-linenoise.c with line-noise-windows/linenoise.c and line-noise-windows/win32fixes.c to create the Windows-compatible DLL.
+meson setup build
+meson compile -C build
 
 # Usage
 
@@ -76,32 +56,15 @@ return true on success.
 
 Enables multi-line mode if *multiline* is true, disables otherwise.
 
-## L.sethints(callback)
-
-Sets a hints callback to provide hint information on the right hand side of the
-prompt.  *calback* should be a function that takes a single parameter (a
-string, the line entered so far) and returns zero, one, or two values.  Zero
-values means no hint.  The first value may be *nil* for no hint, or a string
-value for a hint.  If the first value is a string, the second value may be a table
-with the *color* and *bold* keys - *color* is an ANSI terminal color code (such as
-those provided by the [lua-term](https://luarocks.org/modules/hoelzro/lua-term) colors
-module), whereas *bold* is a boolean indicating whether or not the hint should be printed
-as bold.
-
 ## L.printkeycodes()
 
 Prints linenoise key codes.  Primarly used for debugging.
-
-## L.enableutf8()
-
-Enables UTF-8 handling.
 
 # Example
 
 ```lua
 local L = require 'linenoise'
-local colors = require('term').colors -- optional
--- L.clearscreen()
+L.clearscreen()
 print '----- Testing lua-linenoise! ------'
 local prompt, history = '? ', 'history.txt'
 L.historyload(history) -- load existing history
@@ -111,13 +74,6 @@ L.setcompletion(function(completion,str)
     completion:add('halt')
   end
 end)
-L.sethints(function(str)
-  if str == 'h' then
-    return ' bold hints in red', { color = colors.red, bold = true }
-  end
-end)
-
-L.enableutf8()
 
 local line, err = L.linenoise(prompt)
 while line do

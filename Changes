@@ -1,3 +1,8 @@
+0.10   2025 Jul 01
+       - Migrated to linenoise-ng which really works on Windows
+       - Dropped binding to functions not available on linenoise-ng
+       - Added meson build support
+
 0.9    2018 Apr 04
        - Add syntactic sugar for addcompletion (thanks, Natanael Copa!)
        - Add bindings for new linenoise functions: setmultiline, sethintscallback, printkeycodes (GH #16, GH #17)
