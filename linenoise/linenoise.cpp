@@ -450,12 +450,15 @@ class Utf32String {
   }
 
   explicit Utf32String(const char32_t* src) : _length(0), _data(nullptr) {
-    for (_length = 0; src[_length] != 0; ++_length) {
+    for (_length = 0; src[_length] != 0; ++_length) {}
+    if (_length >= 0) {
+      _data = new char32_t[_length + 1]();
+      memcpy(_data, src, static_cast<size_t>(_length) * sizeof(char32_t));
+    } else {
+      // Handle the error appropriately — maybe throw or assign empty data
+      _length = 0;
+      _data = new char32_t[1]();
     }
-
-    // note: parens intentional, _data must be properly initialized
-    _data = new char32_t[_length + 1]();
-    memcpy(_data, src, _length * sizeof(char32_t));
   }
 
   explicit Utf32String(const char32_t* src, int len) : _length(len), _data(nullptr) {
@@ -478,7 +481,7 @@ class Utf32String {
   Utf32String& operator=(const Utf32String& that) {
     if (this != &that) {
       delete[] _data;
-      _data = new char32_t[that._length]();
+      _data = new char32_t[that._length + 1]();
       _length = that._length;
       memcpy(_data, that._data, sizeof(char32_t) * _length);
     }
@@ -486,7 +489,25 @@ class Utf32String {
     return *this;
   }
 
-  ~Utf32String() { delete[] _data; }
+  // Prevent std::vector segfault on killring reserve //////////////////////////
+  Utf32String(Utf32String&& that) noexcept : _length(that._length), _data(that._data) {
+    that._data = nullptr;
+    that._length = 0;
+  }
+
+  Utf32String& operator=(Utf32String&& that) noexcept {
+    if (this != &that) {
+      delete[] _data;
+      _data = that._data;
+      _length = that._length;
+      that._data = nullptr;
+      that._length = 0;
+    }
+    return *this;
+  }
+  //////////////////////////////////////////////////////////////////////////////
+
+  ~Utf32String() { if (_data) delete[] _data; }
 
  public:
   char32_t* get() const { return _data; }
